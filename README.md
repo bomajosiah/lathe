@@ -33,7 +33,7 @@ One command for a new or existing project:
 lathe start <repo>
 ```
 
-It scans whatever is missing (map, components, tokens), keeps `.lathe/` out of git, and serves the workbench at http://localhost:4747. Running a second project at the same time? It picks the next free port (4749, 4751…). For a repo with several apps, add `--app <dir>`.
+It scans whatever is missing (map, components, tokens), keeps `.lathe/` out of git, and serves the workbench at http://localhost:4747. Running a second project at the same time, or another tool on 4747? It picks the next free port (4749, 4751…) and says which. For a repo with several apps, add `--app <dir>`.
 
 Then hand the project to your agent:
 

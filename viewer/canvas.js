@@ -70,7 +70,7 @@ export function initCanvas(ctx) {
           cells.push({
             id: `page:${n.id}`, kind: "page", node: n, part, x: (i % perRow) * (PAGE.w + GAP * 2), y: y + Math.floor(i / perRow) * (PAGE.h + HEAD + GAP * 2),
             w: PAGE.w, h: PAGE.h, label: n.label, sub: n.path || "", live: C.render && !!part,
-            src: part ? harnessSrc(part, "", "default", 0) : null,
+            src: part ? harnessSrc(part, "", "default", 0, n.path && !n.path.includes(":") ? n.path : "") : null,
           });
         });
         y += Math.ceil(list.length / perRow) * (PAGE.h + HEAD + GAP * 2) + 40;
@@ -109,8 +109,8 @@ export function initCanvas(ctx) {
     if (!C.moved) fit(); else paint();
     renderPanel();
   }
-  function harnessSrc(p, variant, themeId, pad) {
-    const q = new URLSearchParams({ file: p.file, name: p.export, id: p.id, side: "work", variant, pad, ...ctx.themeParams(themeId) });
+  function harnessSrc(p, variant, themeId, pad, route = "") {
+    const q = new URLSearchParams({ file: p.file, name: p.export, id: p.id, side: "work", variant, pad, ...(route ? { route } : {}), ...ctx.themeParams(themeId) });
     return `${harnessOrigin()}/__lathe/harness.html?${q}`;
   }
   function wireframe(n) {
