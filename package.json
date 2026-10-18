@@ -1,0 +1,10 @@
+{
+  "name": "lathe",
+  "version": "0.1.0",
+  "description": "The workbench where design decisions on a coded product get made, by you or an agent, and written back into the code.",
+  "type": "module",
+  "private": true,
+  "bin": { "lathe": "bin/lathe.mjs" },
+  "engines": { "node": ">=20" },
+  "repository": "github:bomajosiah/lathe"
+}

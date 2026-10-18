@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lathe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="stage map-only" id="stage">
+    <svg id="canvas" role="img" aria-label="Information architecture map"></svg>
+    <div class="empty" id="empty" hidden></div>
+  </main>
+
+  <header class="float title-card">
+    <span class="mark" aria-hidden="true">
+      <svg viewBox="0 0 20 20" width="18" height="18"><circle cx="10" cy="4" r="2.2"/><circle cx="4" cy="15.5" r="2.2"/><circle cx="16" cy="15.5" r="2.2"/><path d="M10 6.2v3.3M10 9.5C10 12 4 11 4 13.3M10 9.5c0 2.5 6 1.5 6 3.8"/></svg>
+    </span>
+    <span class="title" id="product">Lathe</span>
+    <span class="meta" id="meta"></span>
+  </header>
+
+  <div class="float version-card">
+    <nav class="seg-line" aria-label="Workbench" id="modeTabs">
+      <button class="is-on" data-mode="map" aria-current="page">Map</button>
+      <button data-mode="parts">Parts</button>
+      <button data-mode="tokens">Tokens</button>
+    </nav>
+    <span class="vsep"></span>
+    <span class="pbase parts-only" id="pbase"></span>
+    <button class="toggle parts-only" id="psnap">Snapshot HEAD</button>
+    <label class="version theme-pick" id="themeWrap" hidden><span>Theme</span><select id="themePick"></select><svg viewBox="0 0 12 12" width="10" height="10"><path d="M3 4.5 6 1.5l3 3M3 7.5l3 3 3-3"/></svg></label>
+    <label class="version map-only"><span>Before</span><select id="pickA"></select><svg viewBox="0 0 12 12" width="10" height="10"><path d="M3 4.5 6 1.5l3 3M3 7.5l3 3 3-3"/></svg></label>
+    <label class="version map-only" id="viewAsWrap" hidden><span>View as</span><select id="viewAs"></select><svg viewBox="0 0 12 12" width="10" height="10"><path d="M3 4.5 6 1.5l3 3M3 7.5l3 3 3-3"/></svg></label>
+    <label class="version map-only"><span>After</span><select id="pickB"></select><svg viewBox="0 0 12 12" width="10" height="10"><path d="M3 4.5 6 1.5l3 3M3 7.5l3 3 3-3"/></svg></label>
+  </div>
+
+  <div class="float dock map-only" role="toolbar" aria-label="Before and after">
+    <div class="seg-solid">
+      <button id="btnA" class="is-on">Before</button>
+      <button id="btnB">After</button>
+    </div>
+    <button id="play" class="ibtn" title="Play before → after (Space)" aria-label="Play">
+      <svg viewBox="0 0 16 16" width="14" height="14"><path d="M4.5 3v10l8.5-5z" fill="currentColor"/></svg>
+    </button>
+    <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="Scrub before to after" />
+    <span class="vsep"></span>
+    <button id="optChanges" class="toggle is-on" aria-pressed="true">Changes</button>
+    <button id="optFlows" class="toggle" aria-pressed="false" title="Show all links (L)">Flows</button>
+    <button id="fit" class="ibtn" title="Fit (F) · Focus mode (⌘|)" aria-label="Fit to screen">
+      <svg viewBox="0 0 16 16" width="14" height="14"><path d="M2.5 6V2.5H6M13.5 6V2.5H10M2.5 10v3.5H6M13.5 10v3.5H10"/></svg>
+    </button>
+  </div>
+
+  <section class="float legend map-only" id="legend">
+    <button class="legend-head" id="legendToggle" aria-expanded="false">Legend <svg viewBox="0 0 12 12" width="10" height="10"><path d="M3 7.5 6 4.5l3 3"/></svg></button>
+    <div class="legend-body" id="legendBody" hidden></div>
+  </section>
+
+  <aside class="float panel map-only" id="panel">
+    <div class="seg-line ptabs" role="tablist">
+      <button role="tab" data-p="changes" class="is-on">Changes</button>
+      <button role="tab" data-p="inspect">Inspect</button>
+      <button role="tab" data-p="brief">Brief</button>
+    </div>
+    <div class="pbody" id="pbody"></div>
+  </aside>
+
+  <div class="menu" id="menu" role="menu" hidden></div>
+
+  <!-- Parts: component workbench -->
+  <section class="float plist parts-only" id="plist">
+    <div class="plist-head">
+      <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
+      <input id="psearch" placeholder="Search components" aria-label="Search components" />
+      <button id="prescan" class="ibtn" title="Re-scan components" aria-label="Re-scan"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5v3h-3"/></svg></button>
+    </div>
+    <div class="chips" id="pfilters"></div>
+    <div class="plist-body" id="plistBody"></div>
+  </section>
+  <main class="pstage parts-only" id="pstage"></main>
+  <div class="float dock pdock parts-only" role="toolbar" aria-label="Component controls">
+    <div class="seg-solid">
+      <button id="pA">Before</button>
+      <button id="pB" class="is-on">After</button>
+    </div>
+    <button id="pplay" class="ibtn" title="Play before → after (Space)" aria-label="Play">
+      <svg viewBox="0 0 16 16" width="14" height="14"><path d="M4.5 3v10l8.5-5z" fill="currentColor"/></svg>
+    </button>
+    <button id="pSide" class="toggle" title="Before and after side by side (S)">Split</button>
+    <button id="pThemes" class="toggle" title="Every theme side by side (Shift+T) · T switches theme" hidden>Themes</button>
+    <span class="vsep"></span>
+    <label class="version"><span>Variant</span><select id="pVariant"></select><svg viewBox="0 0 12 12" width="10" height="10"><path d="M3 4.5 6 1.5l3 3M3 7.5l3 3 3-3"/></svg></label>
+    <span class="vsep"></span>
+    <div class="seg-line widths" id="pWidths"></div>
+    <span class="pzoom" id="pzoom"></span>
+    <button id="preload" class="ibtn" title="Reload (R)" aria-label="Reload"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5v3h-3"/></svg></button>
+  </div>
+  <!-- Tokens: foundations workbench -->
+  <section class="float plist tokens-only" id="tlist">
+    <div class="plist-head">
+      <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
+      <input id="tsearch" placeholder="Search tokens, values, purpose" aria-label="Search tokens" />
+      <button id="trescan" class="ibtn" title="Re-scan tokens" aria-label="Re-scan"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5v3h-3"/></svg></button>
+    </div>
+    <div class="chips" id="tfilters"></div>
+    <div class="plist-body" id="tlistBody"></div>
+  </section>
+  <main class="pstage tokens-only" id="tstage"></main>
+  <div class="float dock tdock tokens-only" role="toolbar" aria-label="Token controls">
+    <div class="seg-solid">
+      <button id="tA">Before</button>
+      <button id="tB" class="is-on">After</button>
+    </div>
+    <button id="tplay" class="ibtn" title="Play before → after (Space)" aria-label="Play">
+      <svg viewBox="0 0 16 16" width="14" height="14"><path d="M4.5 3v10l8.5-5z" fill="currentColor"/></svg>
+    </button>
+    <span class="vsep"></span>
+    <button id="tThemes" class="toggle" title="Every theme side by side (Shift+T) · T switches theme" hidden>Themes</button>
+    <span class="vsep"></span>
+    <span class="tcount" id="tcount"></span>
+    <button id="tclear" class="toggle">Clear</button>
+  </div>
+  <aside class="float panel tokens-only" id="tpanel">
+    <div class="seg-line ptabs" role="tablist">
+      <button role="tab" data-p="token" class="is-on">Token</button>
+      <button role="tab" data-p="checks">Checks</button>
+      <button role="tab" data-p="brief">Brief</button>
+    </div>
+    <div class="pbody" id="tpbody"></div>
+  </aside>
+
+  <aside class="float panel parts-only" id="ppanel">
+    <div class="seg-line ptabs" role="tablist">
+      <button role="tab" data-p="details" class="is-on">Details</button>
+      <button role="tab" data-p="brief">Brief</button>
+    </div>
+    <div class="pbody" id="ppbody"></div>
+  </aside>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
