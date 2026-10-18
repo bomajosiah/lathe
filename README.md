@@ -60,6 +60,7 @@ In the workbench: **Space** plays before → after, **← / →** jump, **T** sw
 | `list_tokens`, `set_token`, `clear_token_overrides` | tokens per theme with purpose and reach; values are previewed as overrides, never written to the repo, and only existing tokens can be set |
 | `get_selection` | what you last picked with Inspect |
 | `list_comments`, `comment` | the workbench's comment threads, as the agent |
+| `propose_edit`, `list_edits`, `begin_edit`, `get_edit`, `submit_edit` | intent edits: a worktree on its own branch, the diff, and review by the human; accepting and rejecting stay the human's |
 
 Add it to Claude Code from the repo you're working on:
 
@@ -84,6 +85,8 @@ Other clients take the same command (`lathe mcp <repo>`) as a stdio server. Scre
   ui/wrapper.tsx            optional providers / API mocks for isolated renders
   ui/harness-errors.json    render failures, for the agent to fix
   ui/selection.json         the element you last picked in Inspect, for the agent
+  ui/edits.json, edits.md   intent edits and the log of accepted ones
+  edits/<id>/               an edit's worktree while an agent works on it
   ui/brief.md               the component brief
   ui/tokens.json            design tokens, reach and checks (Tokens)
   ui/overrides.json|.css    live token edits: preview only until applied
@@ -155,6 +158,14 @@ They connect through source references. Every map section carries a `source` (an
 
 **Limits for now:** Vite + React apps only (Next.js and others need their own harness). Components that aren't exported can only be seen through their parent. The Before side resolves path aliases (like `@/`) to the working tree, so aliased imports inside Before show current code.
 
+## Intent edits: describe it, an agent makes it, you decide
+
+Structure changes by intent rather than by dragging. In Parts, pick a component (and, with Inspect, an element), write what should change, and **Propose**. An agent connected through `lathe mcp` picks it up (`list_edits`, `begin_edit`), or proposes one itself (`propose_edit`). Either way Lathe gives it a git worktree on its own branch, `lathe/edit-<id>` under `.lathe/edits/`, so your working tree and anyone else working in it are never touched. The agent edits there, checks with `screenshot { edit }`, and calls `submit_edit`.
+
+Then the edit is **ready to review**: Parts shows **Now** (your working tree) beside **Proposed** (the edit's worktree), both rendered by the app's own build, with the agent's summary and the diff. Raw colours and pixel values the edit introduces are flagged, since the system uses tokens. **Accept** commits on the edit's branch, removes the worktree, keeps the branch and logs the edit in `ui/edits.md` and the Parts brief. **Apply to working tree** then lands it in your files if it applies cleanly (otherwise merge the branch). **Reject** deletes the worktree and the branch.
+
+The worktree starts from `HEAD`: if your working tree has uncommitted changes, the agent is told which files differ.
+
 ## Canvas: screens and components together
 
 The fourth tab puts everything on one surface you pan and zoom. The map's pages are frames at the top (wireframes from the map, or **Render pages** for the real page component where the map names one); below, every component with variants gets a sheet, one cell per story or fixture variant, and **Themes** adds a column per theme. Frames are the app's own build with the token overrides applied, so a change made in Tokens or through `set_token` shows on every component and every screen at once.
@@ -190,6 +201,7 @@ A token that a scope redefines (say `[data-tenant] { --surface-card: var(--tenan
 - `lib/brief.mjs`: diff → markdown brief
 - `lib/server.mjs`: local server, file watching, comments API
 - `lib/parts-scan.mjs`: repo → component inventory
+- `lib/edits.mjs`: intent edits (worktrees, diff, off-system check, accept, reject, apply)
 - `lib/mcp.mjs`: the MCP server; `lib/browser.mjs`: headless Chrome over the DevTools protocol, for screenshots
 - `lib/tagger.mjs`: source tags for Inspect (Babel, inside Lathe's Vite only)
 - `lib/stories.mjs`: finds Storybook's config and story files and links stories to components

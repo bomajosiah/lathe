@@ -36,7 +36,7 @@ When the human is happy: `lathe brief <repo>` writes `.lathe/ia/brief.md` (or th
 
 ## Working through MCP
 
-If your client has Lathe's MCP server (`lathe mcp <repo>`), prefer its tools to reading Lathe's files: `screenshot` a variant in each theme that matters and look at it before and after a change; `set_token` to preview a value (the human applies it); `get_selection` when the human says "this"; `comment` to explain a change. The tools refuse off-system values on purpose: if the value you need doesn't exist, propose a token or variant to the human instead of working around it.
+If your client has Lathe's MCP server (`lathe mcp <repo>`), prefer its tools to reading Lathe's files: `screenshot` a variant in each theme that matters and look at it before and after a change; `set_token` to preview a value (the human applies it); `get_selection` when the human says "this"; `comment` to explain a change. When the human proposes a change in Parts, it waits in `list_edits` (status open): `begin_edit` gives you a worktree on its own branch; edit there, never in the repo root; `screenshot { edit }` shows Now against Proposed; `submit_edit` with a summary (what exists, what's wrong, change, why). You can start one yourself with `propose_edit`. Accepting, rejecting and applying are the human's. The tools refuse off-system values on purpose: if the value you need doesn't exist, propose a token or variant to the human instead of working around it.
 
 ## Parts: components
 

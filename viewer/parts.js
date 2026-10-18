@@ -39,7 +39,7 @@ export function initParts(ctx) {
   const P = {
     inv: null, changed: [], harness: null, sel: null, filter: "all", q: "",
     t: 1, side: false, themes: false, width: 0, variant: {}, variants: {}, errors: {}, anim: null, panel: "details", started: false, frameKey: "",
-    inspect: false, picked: null, args: {},
+    inspect: false, picked: null, args: {}, edits: [], edit: null, diff: null,
   };
 
   const api = (u, o) => fetch(u, o).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j; });
@@ -49,7 +49,9 @@ export function initParts(ctx) {
   const dir = () => P.inv?.dir || ".lathe";
 
   async function refresh() {
-    const [inv, h] = await Promise.all([api("/api/parts"), api("/api/harness")]);
+    const [inv, h, edits] = await Promise.all([api("/api/parts"), api("/api/harness"), api("/api/edits").catch(() => [])]);
+    P.edits = edits;
+    if (P.edit) await loadDiff();
     P.changed = inv.changed || [];
     P.inv = inv;
     P.harness = h;
@@ -69,7 +71,7 @@ export function initParts(ctx) {
 
   function select(id) {
     if (!part(id)) return;
-    if (P.sel !== id) P.picked = null;
+    if (P.sel !== id) { P.picked = null; P.edit = null; P.diff = null; }
     P.sel = id;
     ctx.setHash(`parts/${encodeURIComponent(id)}`);
     renderList(); renderFrames(); renderPanel();
@@ -155,11 +157,18 @@ export function initParts(ctx) {
       st.innerHTML = `<div class="pmsg"><b>${esc(p.name)} isn't exported</b><p>It's local to <span class="mono">${esc(p.file)}</span>, so it can only be seen through its parent. Export it to work on it in isolation.</p></div>`;
       return;
     }
-    const sides = hasBase() ? ["base", "work"] : ["work"];
+    const ed = P.edit && P.edits.find((e) => e.id === P.edit);
+    const reviewing = ed && (ed.status === "editing" || ed.status === "proposed");
+    const sides = reviewing ? ["work", `edit:${ed.id}`] : hasBase() ? ["base", "work"] : ["work"];
     const themes = ctx.themes();
-    const key = [p.id, P.variant[p.id] || "", JSON.stringify(P.args[p.id] || {}), P.side, P.themes, sides.join(), H.url, H.base?.commit, JSON.stringify(ctx.themeParams())].join("|");
+    const key = [p.id, reviewing ? `${ed.id}@${ed.submittedAt || ed.startedAt}` : "", P.variant[p.id] || "", JSON.stringify(P.args[p.id] || {}), P.side, P.themes, sides.join(), H.url, H.base?.commit, JSON.stringify(ctx.themeParams())].join("|");
     if (key !== P.frameKey) P.picked = null; // the frames reload, so the picked element is gone
-    if (key !== P.frameKey && P.themes && themes.length > 1) {
+    if (key !== P.frameKey && reviewing) {
+      // Reviewing an intent edit: Now (working tree) beside Proposed (the edit's worktree).
+      P.frameKey = key;
+      const lab = (s) => s === "work" ? `Now <span>working tree</span>` : `Proposed <span>${esc(ed.branch)}</span>`;
+      st.innerHTML = sides.map((s) => `<div class="pframe" data-card="${esc(s)}"><div class="pframe-h"><i class="sdot-${s === "work" ? "base" : "work"}"></i>${lab(s)}<em class="perr" data-err="${esc(s)}"></em></div><div class="pframe-b"><iframe data-side="${esc(s)}" src="${esc(harnessSrc(p, s))}" title="${esc(p.name)} (${s === "work" ? "now" : "proposed"})"></iframe></div></div>`).join("");
+    } else if (key !== P.frameKey && P.themes && themes.length > 1) {
       // Every theme side by side (working tree, with token overrides).
       P.frameKey = key;
       st.innerHTML = themes.map((th) => `<div class="pframe" data-card="${esc(th.id)}"><div class="pframe-h"><i class="sdot-work"></i>${esc(th.label)} <span>theme</span><em class="perr" data-err="work"></em></div><div class="pframe-b"><iframe data-side="work" src="${esc(harnessSrc(p, "work", th.id))}" title="${esc(p.name)} (${esc(th.label)})"></iframe></div></div>`).join("");
@@ -308,6 +317,27 @@ export function initParts(ctx) {
       if (x.value === "") delete a[x.dataset.arg]; else a[x.dataset.arg] = JSON.parse(x.value);
       P.args[P.sel] = a; renderFrames(); renderPanel();
     }));
+    $("#pEditGo")?.addEventListener("click", async () => {
+      const text = $("#pEditText").value.trim();
+      if (!text) return $("#pEditText").focus();
+      const k = P.picked;
+      const e = await api("/api/edits", post({ action: "create", text, target: { part: P.sel, variant: P.variant[P.sel] || P.variants[P.sel]?.[0] || null, theme: ctx.themeParams().theme || "default", args: P.args[P.sel] || {}, element: k ? { file: k.file, line: k.line, owner: k.owner, tag: k.tag, classes: k.classes, tokens: [...new Set(k.uses.flatMap((u) => u.tokens))] } : null } }));
+      P.edits = [...P.edits, e];
+      ctx.toast("Proposed: waiting for an agent");
+      renderPanel();
+    });
+    el.querySelectorAll("[data-edit]").forEach((x) => (x.onclick = async (ev) => { ev.preventDefault(); P.edit = P.edit === x.dataset.edit ? null : x.dataset.edit; P.diff = null; if (P.edit) await loadDiff(); renderFrames(); renderPanel(); }));
+    el.querySelectorAll("[data-edit-act]").forEach((x) => (x.onclick = async () => {
+      const [act, id] = x.dataset.editAct.split(":");
+      if (act === "reject" && !confirm("Reject this edit? Its worktree and branch are deleted.")) return;
+      if (act === "apply" && !confirm("Apply this edit's changes to your working tree?")) return;
+      try {
+        await api("/api/edits", post({ action: act, id }));
+        ctx.toast({ accept: "Accepted: committed on its branch", reject: "Rejected", apply: "Applied to the working tree" }[act]);
+        if (act !== "apply") { P.frameKey = ""; }
+        await refresh();
+      } catch (err) { ctx.toast(err.message); }
+    }));
     $("#pArgsReset")?.addEventListener("click", (ev) => { ev.preventDefault(); delete P.args[P.sel]; renderFrames(); renderPanel(); });
     $("#pArgsCopy")?.addEventListener("click", (ev) => { ev.preventDefault(); navigator.clipboard?.writeText(JSON.stringify(P.args[P.sel] || {}, null, 2)); ctx.toast("Args copied"); });
     $("#pPickClear")?.addEventListener("click", (ev) => { ev.preventDefault(); P.picked = null; api("/api/selection", post({ clear: true })).catch(() => {}); $("#pstage").querySelectorAll("iframe").forEach((f) => f.contentWindow?.postMessage({ type: "lathe:inspect", on: P.inspect, clear: true }, harnessOrigin())); renderPanel(); });
@@ -345,6 +375,7 @@ export function initParts(ctx) {
         L.push(`<div class="label">Tokens it uses · ${new Set(k.uses.flatMap((u) => u.tokens)).size}</div><div class="box">${k.uses.map((u) => `<div style="align-items:flex-start"><span class="mono muted" style="min-width:110px">${esc(u.prop)}</span><span style="margin-left:auto;text-align:right;display:grid;gap:2px">${u.tokens.map((t) => `<a href="#" class="mono" data-tok="${esc(t)}">${sw(k.resolved[t] || "")}${esc(t)} <span class="muted">${esc((k.resolved[t] || "").slice(0, 24))}</span></a>`).join("")}</span></div>`).join("")}</div>`);
       } else L.push(`<p class="muted" style="font-size:12px">No tokens in the CSS that styles this element.</p>`);
     }
+    L.push(editsHTML(p));
     L.push(`<div class="label">Source</div><div class="field src" data-src="${esc(`${p.file}:${p.line}`)}">${esc(p.file)}:${p.line}<span class="muted">copy</span></div>`);
     if (p.props.length) {
       // Props with a closed set of values (string-literal unions, booleans) can be set here:
@@ -381,7 +412,36 @@ export function initParts(ctx) {
     return L.join("");
   }
 
-  const brief = () => buildPartsBrief(P.inv, { changed: P.changed, base: P.harness?.base, comments: ctx.comments() });
+  const brief = () => buildPartsBrief(P.inv, { changed: P.changed, base: P.harness?.base, comments: ctx.comments(), edits: P.edits });
+
+  // ---------- intent edits ----------
+  async function loadDiff() {
+    try { P.diff = await api(`/api/edits/diff?id=${encodeURIComponent(P.edit)}`); } catch { P.diff = null; }
+  }
+  const EDIT_PILL = { open: "waiting for an agent", editing: "agent editing", proposed: "ready to review", accepted: "accepted", rejected: "rejected" };
+  function editsHTML(p) {
+    const mine = P.edits.filter((e) => e.target?.part === p.id).slice().reverse();
+    const L = [];
+    const ed = P.edit && mine.find((e) => e.id === P.edit);
+    if (ed) {
+      L.push(`<div class="label">Edit · ${esc(EDIT_PILL[ed.status])} · <a href="#" data-edit="${esc(ed.id)}">close</a></div><p>${esc(ed.text)}</p>`);
+      if (ed.summary) L.push(`<p class="muted" style="font-size:12px">${esc(ed.summary)}</p>`);
+      if (ed.branch) L.push(`<div class="field src" data-src="${esc(ed.branch)}">${esc(ed.branch)}${ed.commit ? ` @ ${esc(ed.commit.slice(0, 8))}` : ""}<span class="muted">copy</span></div>`);
+      if (ed.offSystem?.length) L.push(`<div class="errbox"><b>Raw values in ${ed.offSystem.length} added line${ed.offSystem.length > 1 ? "s" : ""}</b>${ed.offSystem.slice(0, 6).map((o) => `<div class="mono" style="font-size:11px">${esc(o.file)}: ${esc(o.values.join(", "))}</div>`).join("")}</div>`);
+      const d = P.diff;
+      if (d?.files?.length) L.push(`<div class="label">Diff · ${d.files.length} file${d.files.length > 1 ? "s" : ""}</div><pre class="pdiff">${diffHTML(d.patch)}</pre>`);
+      else if (ed.status === "editing") L.push(`<p class="muted" style="font-size:12px">No changes yet.</p>`);
+      const acts = ed.status === "proposed" ? [["accept", "Accept"], ["reject", "Reject"]] : ed.status === "editing" ? [["reject", "Discard"]] : ed.status === "accepted" && !ed.applied ? [["apply", "Apply to working tree"]] : [];
+      if (acts.length) L.push(`<div style="display:flex;gap:6px">${acts.map(([a, l], i) => `<button class="btn${i ? " ghost" : ""}" data-edit-act="${a}:${esc(ed.id)}">${l}</button>`).join("")}</div>`);
+      return L.join("");
+    }
+    L.push(`<div class="label">Describe a change${P.picked ? ` · to the picked <span class="mono">${esc(P.picked.tag)}</span>` : ""}</div><textarea id="pEditText" class="pedit" rows="2" placeholder="What should change"></textarea><button class="btn" id="pEditGo">Propose</button>`);
+    if (mine.length) L.push(`<div class="box" style="margin-top:10px">${mine.map((e) => `<a href="#" data-edit="${esc(e.id)}"><span class="pill ${e.status === "proposed" ? "changed" : e.status === "accepted" ? "added" : e.status === "rejected" ? "removed" : ""}">${esc(EDIT_PILL[e.status])}</span><span style="margin-left:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.text)}</span></a>`).join("")}</div>`);
+    return L.join("");
+  }
+  function diffHTML(patch) {
+    return esc(patch.slice(0, 60000)).split("\n").map((l) => l.startsWith("+") && !l.startsWith("+++") ? `<ins>${l}</ins>` : l.startsWith("-") && !l.startsWith("---") ? `<del>${l}</del>` : l.startsWith("@@") ? `<b>${l}</b>` : l).join("\n");
+  }
   function briefHTML() {
     const html = brief().split("\n").map((l) => {
       const inl = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/_([^_]+)_/g, "<i>$1</i>");
