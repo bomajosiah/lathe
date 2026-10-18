@@ -683,6 +683,7 @@ const parts = initParts({
   setComments: (list) => { S.comments = list; draw(); },
   pageLabel: (id) => S.A?.nodes.find((n) => n.id === id)?.label || allNodes()[id]?.label || id,
   showOnMap: (id) => { setMode("map"); select({ node: id, section: null }, true); focusNode(id); },
+  openToken: (name) => { setMode("tokens"); tokens.select(name); },
 });
 const tokens = initTokens({
   setHash, toast, cycleTheme,

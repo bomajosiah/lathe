@@ -16,10 +16,30 @@ const KIND_ICON = {
   local: '<path d="M8 2.5l5 2.8v5.4L8 13.5l-5-2.8V5.3z" stroke-dasharray="2 2"/>',
 };
 
+// The closed set of values a prop type allows: string-literal unions and booleans.
+function choicesOf(type) {
+  if (!type) return null;
+  const t = type.trim();
+  if (t === "boolean") return [true, false];
+  const parts = t.split("|").map((x) => x.trim()).filter(Boolean);
+  if (parts.length < 2 && !/^['"]/.test(t)) return null;
+  const vals = [];
+  for (const x of parts) {
+    const m = x.match(/^(['"])(.*)\1$/);
+    if (m) vals.push(m[2]);
+    else if (x === "true" || x === "false") vals.push(x === "true");
+    else if (x === "undefined" || x === "null") continue;
+    else if (/^-?\d+(\.\d+)?$/.test(x)) vals.push(+x);
+    else return null;
+  }
+  return vals.length ? vals : null;
+}
+
 export function initParts(ctx) {
   const P = {
     inv: null, changed: [], harness: null, sel: null, filter: "all", q: "",
     t: 1, side: false, themes: false, width: 0, variant: {}, variants: {}, errors: {}, anim: null, panel: "details", started: false, frameKey: "",
+    inspect: false, picked: null, args: {},
   };
 
   const api = (u, o) => fetch(u, o).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j; });
@@ -49,6 +69,7 @@ export function initParts(ctx) {
 
   function select(id) {
     if (!part(id)) return;
+    if (P.sel !== id) P.picked = null;
     P.sel = id;
     ctx.setHash(`parts/${encodeURIComponent(id)}`);
     renderList(); renderFrames(); renderPanel();
@@ -105,7 +126,8 @@ export function initParts(ctx) {
     const v = P.variant[p.id] || "";
     // Standalone components get breathing room; pages and chrome sit edge to edge.
     const pad = p.kind === "component" ? 32 : 0;
-    const q = new URLSearchParams({ file: p.file, name: p.export, id: p.id, side, variant: v, pad, ...ctx.themeParams(themeId) });
+    const args = P.args[p.id] && Object.keys(P.args[p.id]).length ? { args: JSON.stringify(P.args[p.id]) } : {};
+    const q = new URLSearchParams({ file: p.file, name: p.export, id: p.id, side, variant: v, pad, ...args, ...ctx.themeParams(themeId) });
     return `${harnessOrigin()}/__lathe/harness.html?${q}`;
   }
   // Same hostname as the workbench (only the port differs), so the browser keeps
@@ -135,7 +157,8 @@ export function initParts(ctx) {
     }
     const sides = hasBase() ? ["base", "work"] : ["work"];
     const themes = ctx.themes();
-    const key = [p.id, P.variant[p.id] || "", P.side, P.themes, sides.join(), H.url, H.base?.commit, JSON.stringify(ctx.themeParams())].join("|");
+    const key = [p.id, P.variant[p.id] || "", JSON.stringify(P.args[p.id] || {}), P.side, P.themes, sides.join(), H.url, H.base?.commit, JSON.stringify(ctx.themeParams())].join("|");
+    if (key !== P.frameKey) P.picked = null; // the frames reload, so the picked element is gone
     if (key !== P.frameKey && P.themes && themes.length > 1) {
       // Every theme side by side (working tree, with token overrides).
       P.frameKey = key;
@@ -213,9 +236,17 @@ export function initParts(ctx) {
     if (!d || typeof d !== "object" || !String(d.type).startsWith("lathe:")) return;
     if (!P.harness?.url || e.origin !== harnessOrigin()) return;
     if (d.type === "lathe:ready") {
+      if (P.inspect) e.source?.postMessage({ type: "lathe:inspect", on: true }, harnessOrigin());
       P.variants[d.id] = d.variants;
       delete P.errors[`${d.id}|${d.side}`];
       if (d.id === P.sel) { renderChrome(); paintErrors(); renderPanel(); }
+    }
+    if (d.type === "lathe:picked" && d.id === P.sel) {
+      P.picked = { ...d.el, side: d.side };
+      api("/api/selection", post({ part: P.sel, variant: P.variant[P.sel] || P.variants[P.sel]?.[0] || null, side: d.side, theme: ctx.themeParams().theme || "default", args: P.args[P.sel] || {}, element: d.el })).catch(() => {});
+      P.panel = "details";
+      renderPanel();
+      $("#ppbody").scrollTop = 0;
     }
     if (d.type === "lathe:error") {
       P.errors[`${d.id}|${d.side}`] = d.message.slice(0, 160);
@@ -235,6 +266,9 @@ export function initParts(ctx) {
     $("#pSide").disabled = !hasBase();
     $("#pThemes").classList.toggle("is-on", P.themes);
     $("#pThemes").hidden = ctx.themes().length < 2;
+    $("#pInspect").classList.toggle("is-on", P.inspect);
+    $("#pInspect").disabled = !P.harness?.tags;
+    $("#pInspect").title = P.harness?.tags ? "Pick an element: its source, component and tokens (I)" : "Needs @babel/core in the app's dependencies to tag elements with their source";
     const b = P.harness?.base;
     $("#pbase").innerHTML = b ? `Before <b>${esc(b.ref)}</b> <span class="mono">${esc(b.commit.slice(0, 7))}</span>` : `<span class="muted">No Before yet</span>`;
     $("#psnap").textContent = b ? "Re-snapshot" : "Snapshot HEAD";
@@ -245,6 +279,12 @@ export function initParts(ctx) {
   $("#pplay").onclick = play;
   $("#pSide").onclick = () => { if (!hasBase()) return; P.side = !P.side; if (P.side) P.themes = false; renderChrome(); renderFrames(); };
   $("#pThemes").onclick = () => { P.themes = !P.themes; if (P.themes) P.side = false; renderChrome(); renderFrames(); };
+  function setInspect(on) {
+    P.inspect = on;
+    $("#pstage").querySelectorAll("iframe").forEach((f) => f.contentWindow?.postMessage({ type: "lathe:inspect", on }, harnessOrigin()));
+    renderChrome();
+  }
+  $("#pInspect").onclick = () => { if (P.harness?.tags) setInspect(!P.inspect); };
   $("#pVariant").onchange = (e) => { P.variant[P.sel] = e.target.value; renderFrames(); };
   $("#preload").onclick = () => { P.frameKey = ""; renderFrames(); };
   $("#psnap").onclick = async () => {
@@ -262,6 +302,15 @@ export function initParts(ctx) {
     el.innerHTML = P.panel === "brief" ? briefHTML() : detailsHTML();
     el.querySelectorAll("[data-src]").forEach((x) => (x.onclick = () => { navigator.clipboard?.writeText(x.dataset.src); ctx.toast("Copied"); }));
     el.querySelectorAll("[data-part]").forEach((x) => (x.onclick = (ev) => { ev.preventDefault(); select(x.dataset.part); }));
+    el.querySelectorAll("[data-tok]").forEach((x) => (x.onclick = (ev) => { ev.preventDefault(); ctx.openToken(x.dataset.tok); }));
+    el.querySelectorAll(".argpick").forEach((x) => (x.onchange = () => {
+      const a = { ...(P.args[P.sel] || {}) };
+      if (x.value === "") delete a[x.dataset.arg]; else a[x.dataset.arg] = JSON.parse(x.value);
+      P.args[P.sel] = a; renderFrames(); renderPanel();
+    }));
+    $("#pArgsReset")?.addEventListener("click", (ev) => { ev.preventDefault(); delete P.args[P.sel]; renderFrames(); renderPanel(); });
+    $("#pArgsCopy")?.addEventListener("click", (ev) => { ev.preventDefault(); navigator.clipboard?.writeText(JSON.stringify(P.args[P.sel] || {}, null, 2)); ctx.toast("Args copied"); });
+    $("#pPickClear")?.addEventListener("click", (ev) => { ev.preventDefault(); P.picked = null; api("/api/selection", post({ clear: true })).catch(() => {}); $("#pstage").querySelectorAll("iframe").forEach((f) => f.contentWindow?.postMessage({ type: "lathe:inspect", on: P.inspect, clear: true }, harnessOrigin())); renderPanel(); });
     el.querySelectorAll("[data-page]").forEach((x) => (x.onclick = (ev) => { ev.preventDefault(); ctx.showOnMap(x.dataset.page); }));
     el.querySelectorAll("[data-resolve]").forEach((b) => (b.onclick = async () => { ctx.setComments(await api("/api/comments", post({ action: "resolve", id: b.dataset.resolve }))); renderPanel(); }));
     const form = el.querySelector("#pform");
@@ -286,8 +335,29 @@ export function initParts(ctx) {
     L.push(`<div class="label">${esc(kind)} · used ${p.instances}×${P.changed.includes(p.file) ? ` · <span class="pill added">edited</span>` : ""}</div><h3 class="h">${esc(p.name)}</h3>`);
     const errs = ["work", "base"].map((s) => P.errors[`${p.id}|${s}`] && `<div class="errbox"><b>${s === "base" ? "Before" : "After"} failed to render</b>${esc(P.errors[`${p.id}|${s}`])}</div>`).filter(Boolean);
     L.push(...errs);
+    if (P.picked) {
+      const k = P.picked, owner = k.owner && (P.inv.parts.find((x) => x.name === k.owner && x.file === k.file) || P.inv.parts.find((x) => x.name === k.owner));
+      L.push(`<div class="label">Picked · <span class="mono">${esc(k.tag)}</span>${k.owner ? ` in ${owner && owner.id !== p.id ? `<a href="#" data-part="${esc(owner.id)}">${esc(k.owner)}</a>` : esc(k.owner)}` : ""}${k.side === "base" ? " · before" : ""} · <a href="#" id="pPickClear">clear</a></div>`);
+      L.push(`<div class="field src" data-src="${esc(`${k.file}:${k.line}`)}">${esc(k.file)}:${k.line}<span class="muted">copy</span></div>`);
+      if (k.classes.length) L.push(`<p class="mono muted" style="font-size:11.5px;margin:6px 0 0">.${k.classes.map(esc).join(" .")}</p>`);
+      if (k.uses.length) {
+        const sw = (v) => /^(#|rgb|hsl|oklch|oklab|color\()/.test(v) ? `<i class="tswatch" style="background:${esc(v)}"></i>` : "";
+        L.push(`<div class="label">Tokens it uses · ${new Set(k.uses.flatMap((u) => u.tokens)).size}</div><div class="box">${k.uses.map((u) => `<div style="align-items:flex-start"><span class="mono muted" style="min-width:110px">${esc(u.prop)}</span><span style="margin-left:auto;text-align:right;display:grid;gap:2px">${u.tokens.map((t) => `<a href="#" class="mono" data-tok="${esc(t)}">${sw(k.resolved[t] || "")}${esc(t)} <span class="muted">${esc((k.resolved[t] || "").slice(0, 24))}</span></a>`).join("")}</span></div>`).join("")}</div>`);
+      } else L.push(`<p class="muted" style="font-size:12px">No tokens in the CSS that styles this element.</p>`);
+    }
     L.push(`<div class="label">Source</div><div class="field src" data-src="${esc(`${p.file}:${p.line}`)}">${esc(p.file)}:${p.line}<span class="muted">copy</span></div>`);
-    if (p.props.length) L.push(`<div class="label">Props · ${p.props.length}</div><div class="box">${p.props.map((x) => `<div><span class="mono" style="color:var(--ink)">${esc(x.name)}${x.optional ? "?" : ""}</span><span class="mono muted" style="margin-left:auto;text-align:right">${esc(x.type || "")}</span></div>`).join("")}</div>`);
+    if (p.props.length) {
+      // Props with a closed set of values (string-literal unions, booleans) can be set here:
+      // a preview on top of the story or fixture, never a free-form value.
+      const cur = P.args[p.id] || {};
+      const row = (x) => {
+        const opts = choicesOf(x.type);
+        const ctl = opts && p.exported ? `<select class="argpick" data-arg="${esc(x.name)}"><option value="">${cur[x.name] === undefined ? "as rendered" : "reset"}</option>${opts.map((o) => `<option value="${esc(JSON.stringify(o))}" ${cur[x.name] === o ? "selected" : ""}>${esc(String(o))}</option>`).join("")}</select>` : `<span class="mono muted" style="margin-left:auto;text-align:right">${esc(x.type || "")}</span>`;
+        return `<div><span class="mono" style="color:var(--ink)">${esc(x.name)}${x.optional ? "?" : ""}</span>${ctl}</div>`;
+      };
+      const set = Object.keys(cur).length;
+      L.push(`<div class="label">Props · ${p.props.length}${set ? ` · <a href="#" id="pArgsReset">reset ${set}</a> · <a href="#" id="pArgsCopy">copy args</a>` : ""}</div><div class="box">${p.props.map(row).join("")}</div>`);
+    }
     const vs = P.variants[p.id];
     if (p.stories?.length) {
       const files = [...new Set(p.stories.map((x) => x.file))];
@@ -338,6 +408,8 @@ export function initParts(ctx) {
       return true;
     }
     if (k.toLowerCase() === "s" && !e.metaKey) { $("#pSide").click(); return true; }
+    if (k.toLowerCase() === "i" && !e.metaKey) { $("#pInspect").click(); return true; }
+    if (k === "Escape" && P.inspect) { setInspect(false); return true; }
     if (k === "T" || (k === "t" && e.shiftKey)) { $("#pThemes").click(); return true; }
     if (k === "t") { ctx.cycleTheme(); return true; }
     if (/^[0-3]$/.test(k)) { P.width = [0, 375, 768, 1280][+k]; renderChrome(); layout(); return true; }

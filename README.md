@@ -63,6 +63,7 @@ In the workbench: **Space** plays before → after, **← / →** jump, **T** sw
   ui/fixtures/<id>.json     props per variant, written by the agent
   ui/wrapper.tsx            optional providers / API mocks for isolated renders
   ui/harness-errors.json    render failures, for the agent to fix
+  ui/selection.json         the element you last picked in Inspect, for the agent
   ui/brief.md               the component brief
   ui/tokens.json            design tokens, reach and checks (Tokens)
   ui/overrides.json|.css    live token edits: preview only until applied
@@ -125,6 +126,8 @@ They connect through source references. Every map section carries a `source` (an
 - **Inventory:** `lathe parts <repo>` scans every React component: props (with TS types), where it's used and how often, the pages it reaches (via the map), likely duplicates, inline styles and raw colours. The agent annotates it in place; re-scans keep the notes.
 - **Isolation without touching the repo:** opening the Parts tab starts the app's own Vite on port 4748 with one injected plugin. Each component renders alone in an iframe with the app's real CSS, fonts, head scripts and router, and hot-reloads as it's edited. Variants come from the repo's Storybook stories when it has them, otherwise from fixtures the agent writes; providers and API mocks go in `.lathe/ui/wrapper.tsx`.
 - **Storybook, if the repo has it:** the scan reads `.storybook/main` (its `stories` globs) and links each story file to the component its `meta.component` names (or, without one, to the imported component its title ends with). Those stories become the component's variants, rendered in Lathe's harness, not Storybook's: args, `render`, decorators (story, component, then `.storybook/preview`), parameters and `layout` are applied the way Storybook applies them, and the preview file's CSS imports come along. Storybook doesn't need to be running. Loaders, `play` functions and globals toolbars aren't run. Components without stories keep using fixtures.
+- **Inspect (I):** pick any element in a preview to see the line of code that rendered it, the component it's written in, and every token the CSS that styles it uses, resolved in the current theme (click one to open it in Tokens). Elements are tagged with `data-lathe-src` by a Babel pass that runs only inside Lathe's Vite, using the repo's own `@babel/core`; host elements and components imported from packages (Radix, Base UI) are tagged. Nothing is added to the repo's build.
+- **Props:** props whose type is a closed set (string-literal unions, booleans) get a picker in Details. A pick re-renders both sides with that value on top of the story or fixture; it's a preview, never a free-form value, and **copy args** hands it to an agent or a new story.
 - **Before / after:** `lathe base <repo> --ref HEAD` snapshots a ref into `.lathe/ui/base` (via `git archive`, reusing the installed `node_modules`). Parts renders Before (the ref) and After (the working tree) stacked with a crossfade, or side by side, at mobile/tablet/desktop widths.
 - **Map ↔ Parts:** a section or page on the map links to its component ("Open in Parts"), and a component links back to the pages it shows on.
 
