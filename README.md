@@ -89,7 +89,7 @@ In the workbench: **Space** plays before → after, **← / →** jump, **T** sw
 
 Parts and Tokens render in every theme the token scan finds: `:root` plus `[data-theme=…]`, `[data-*-theme=…]`, `.dark` / `.light` / `.theme-*` (for example a default dark theme plus a light one, or per-tenant themes). Pick one in the top bar (or **T**), or show them all side by side (**Themes**, **Shift+T**). In Tokens, the **Themed** filter shows only the tokens whose value changes between themes, and each theme's value is edited separately.
 
-Themes that only exist as `@media (prefers-color-scheme: dark)` follow the viewer's system setting and can't be switched in the previews yet.
+Previews never follow your own OS setting: each frame pins `prefers-color-scheme` to the theme it shows (dark for a dark theme, light otherwise), so a theme that only exists as `@media (prefers-color-scheme: dark)` can be switched like any other, and Default always shows the `:root` values. A token a theme defines in two places (say `[data-theme=dark]` and a media block) gets overrides and Apply in both. Scripts that read `matchMedia` still see the real setting.
 
 ## Decision: standalone workbench, not an in-app package
 

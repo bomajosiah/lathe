@@ -665,7 +665,9 @@ let themes = [], themeId = "default";
 const themeParams = (id = themeId) => {
   const th = themes.find((t) => t.id === id);
   if (!th) return {};
-  return { theme: th.id, ...(th.attr ? { themeAttr: th.attr, themeVal: th.value } : {}), ...(th.cls ? { themeCls: th.cls } : {}) };
+  // Frames pin prefers-color-scheme to the theme, so the viewer's own OS setting never leaks in.
+  const scheme = th.media || (/dark/.test(th.id) ? "dark" : "light");
+  return { theme: th.id, scheme, ...(th.attr ? { themeAttr: th.attr, themeVal: th.value } : {}), ...(th.cls ? { themeCls: th.cls } : {}) };
 };
 function setTheme(id) {
   themeId = id;
