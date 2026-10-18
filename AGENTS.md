@@ -34,6 +34,10 @@ If the repo has its own agent rules (an `AGENTS.md` or `CLAUDE.md`, or a workspa
 
 When the human is happy: `lathe brief <repo>` writes `.lathe/ia/brief.md` (or they click *Save brief.md*). Review it, add anything the generator can't know (redirects for retired URLs, analytics, SEO impact), and use it as the checklist when reworking the repo, on a branch, per the repo's own rules. After the rework, re-scan and check that the live product matches `after.json`.
 
+## Working through MCP
+
+If your client has Lathe's MCP server (`lathe mcp <repo>`), prefer its tools to reading Lathe's files: `screenshot` a variant in each theme that matters and look at it before and after a change; `set_token` to preview a value (the human applies it); `get_selection` when the human says "this"; `comment` to explain a change. The tools refuse off-system values on purpose: if the value you need doesn't exist, propose a token or variant to the human instead of working around it.
+
 ## Parts: components
 
 The **Parts** tab in the workbench is the same loop for components: inventory, isolate, change, compare before/after, brief. It renders each component on its own through the app's *own* Vite (its config, CSS, fonts, aliases), started by the workbench on port 4748. Nothing gets installed in the repo. Vite + React only for now.

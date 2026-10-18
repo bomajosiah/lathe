@@ -49,6 +49,26 @@ Working day to day:
 
 In the workbench: **Space** plays before → after, **← / →** jump, **T** switches theme, **Shift+T** shows every theme side by side, **⌘|** focus mode, **F** fits the map, drag to pan, pinch or ⌘-scroll to zoom. Other commands: `scan`, `parts`, `tokens`, `base --ref <ref>`, `diff`, `brief`, `archive`, `restore`.
 
+## Agents: the MCP server
+
+`lathe mcp <repo>` gives an agent the workbench's own actions over MCP (stdio), with the same guards a person has. It uses the project's open workbench if there is one, so you watch the agent's token previews land live; otherwise it starts one.
+
+| Tool | Does |
+|---|---|
+| `list_components`, `get_component` | the inventory: props with types and the values a closed-type prop allows, stories, usage, pages, duplicates |
+| `screenshot` | renders a variant in the app's own build, in any theme and width, After, Before or both, cropped to what rendered; `args` may only set closed-type props to allowed values |
+| `list_tokens`, `set_token`, `clear_token_overrides` | tokens per theme with purpose and reach; values are previewed as overrides, never written to the repo, and only existing tokens can be set |
+| `get_selection` | what you last picked with Inspect |
+| `list_comments`, `comment` | the workbench's comment threads, as the agent |
+
+Add it to Claude Code from the repo you're working on:
+
+```bash
+claude mcp add lathe -- lathe mcp .
+```
+
+Other clients take the same command (`lathe mcp <repo>`) as a stdio server. Screenshots need Node 22+ and a Chrome or Chromium (an installed Chrome, Playwright's download, or `LATHE_CHROME=/path/to/chrome`).
+
 ## Where things live
 
 ```
@@ -159,6 +179,8 @@ The third tab exposes the design tokens (colour, type, space, radius, shadow, mo
 - `lib/brief.mjs`: diff → markdown brief
 - `lib/server.mjs`: local server, file watching, comments API
 - `lib/parts-scan.mjs`: repo → component inventory
+- `lib/mcp.mjs`: the MCP server; `lib/browser.mjs`: headless Chrome over the DevTools protocol, for screenshots
+- `lib/tagger.mjs`: source tags for Inspect (Babel, inside Lathe's Vite only)
 - `lib/stories.mjs`: finds Storybook's config and story files and links stories to components
 - `lib/harness.mjs`: finds the Vite app, runs it with the isolation plugin, snapshots the Before ref
 - `lib/parts-brief.mjs`: inventory + changes → component brief

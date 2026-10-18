@@ -123,6 +123,12 @@ switch (cmd) {
     console.log(r.ok ? `${LEGACY}/ → ${DIR}/  (${exclude()})` : `nothing to do: ${r.why}`);
     break;
   }
+  case "mcp": {
+    // The workbench's actions for agents, over stdio. Point an MCP client at: lathe mcp <repo>
+    const { startMcp } = await import("../lib/mcp.mjs");
+    await startMcp({ root, port: Number(flag("port", 4747)), app: flag("app") });
+    break;
+  }
   case "scan": doScan(); break;
   case "serve": serve({ root, port: Number(flag("port", 4747)), app: flag("app") }); break;
   case "parts": {
@@ -217,7 +223,8 @@ switch (cmd) {
   skills [repo]                     which of the companion skills are installed, and where
   archive <repo> [--to dir] [--label name]   copy .lathe/ somewhere durable (default lathe/archive/)
   restore <repo> --from <archive dir>        put an archived work dir back
-  migrate <repo>                    rename a project's old .lathe/ to .lathe/
+  migrate <repo>                    rename a project's old .ux/ to .lathe/
+  mcp   [repo]                      MCP server (stdio) for agents: components, screenshots, tokens, selection, comments
   diff  <repo> [--from a --to b]    print a change summary
   brief <repo> [--from a --to b]    write .lathe/ia/brief.md, the rework reference`);
 }
