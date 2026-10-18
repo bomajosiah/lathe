@@ -308,7 +308,7 @@ export function initTokens(ctx) {
     const c = T.inv.checks, L = [];
     const con = contrastWith(T.inv, T.ov).sort((a, b) => a.ratio - b.ratio);
     const fails = con.filter((x) => !x.pass);
-    L.push(`<div class="stats"><div class="stat"><b>${fails.length}</b><span>contrast fails</span></div><div class="stat"><b>${c.drift.length}</b><span>hard-coded</span></div><div class="stat"><b>${c.dupes.length}</b><span>duplicates</span></div><div class="stat"><b>${c.unused.length}</b><span>unused</span></div></div>`);
+    L.push(`<div class="stats"><div class="stat"><b>${fails.length}</b><span>contrast fails</span></div><div class="stat"><b>${c.drift.length}</b><span>hard-coded</span></div><div class="stat"><b>${c.dupes.length}</b><span>duplicates</span></div><div class="stat"><b>${c.unused.length}</b><span>unused</span></div><div class="stat"><b>${(c.undefined || []).length}</b><span>undefined</span></div></div>`);
     L.push(`<div class="label">Contrast · lowest first</div>`);
     L.push(con.length ? `<div class="box">${con.slice(0, 14).map((x) => `<div class="src" data-src="${esc(`${x.file}:${x.line}`)}"><span class="dot" style="background:${x.pass ? "var(--add)" : "var(--del)"}"></span><span class="mono" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(x.selector)}">${esc(x.selector)}</span><span class="muted">${esc(x.theme)}</span><b style="font-weight:500">${x.ratio}</b></div>`).join("")}</div>` : `<p class="muted">No colour/background pairs found in the CSS.</p>`);
     const byTok = {};
@@ -318,6 +318,8 @@ export function initTokens(ctx) {
     L.push(Object.keys(byTok).length ? `<div class="box">${Object.entries(byTok).sort((a, b) => b[1] - a[1]).slice(0, 14).map(([n, k]) => `<a href="#" data-tok="${esc(n)}"><span class="mono" style="flex:1">${esc(n)}</span><span class="muted">×${k}</span></a>`).join("")}</div>` : `<p class="muted">None.</p>`);
     if (Object.keys(noMatch).length) L.push(`<p class="muted" style="font-size:12px">No matching token: ${Object.entries(noMatch).map(([k, n]) => `${n} ${k}`).join(", ")}. These are either one-offs or missing tokens.</p>`);
     if (c.dupes.length) L.push(`<div class="label">Duplicates</div><div class="box">${c.dupes.map((d) => `<div style="flex-wrap:wrap">${d.names.map((n) => `<a href="#" class="tchip" data-tok="${esc(n)}">${esc(n)}</a>`).join("")}<span class="muted mono" style="margin-left:auto">${esc(d.value)}</span></div>`).join("")}</div>`);
+    const undef = c.undefined || [];
+    if (undef.length) L.push(`<div class="label">Referenced, never defined · ${undef.length}</div><div class="box">${undef.map((u) => `<div style="align-items:flex-start"><span class="mono" style="color:var(--ink)">${esc(u.name)}</span><span class="muted" style="margin-left:auto;text-align:right;font-size:11.5px">${u.uses} use${u.uses === 1 ? "" : "s"} · ${u.files.slice(0, 3).map((f) => esc(f.split("/").pop())).join(", ")}${u.files.length > 3 ? "…" : ""}</span></div>`).join("")}</div>`);
     if (c.unused.length) L.push(`<div class="label">Unused · ${c.unused.length}</div><div class="tchips">${c.unused.map((n) => `<a href="#" class="tchip" data-tok="${esc(n)}">${esc(n)}</a>`).join("")}</div>`);
     return L.join("");
   }

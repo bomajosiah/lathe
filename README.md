@@ -56,7 +56,7 @@ In the workbench: **Space** plays before → after, **← / →** jump, **T** sw
 | Tool | Does |
 |---|---|
 | `list_components`, `get_component` | the inventory: props with types and the values a closed-type prop allows, stories, usage, pages, duplicates |
-| `screenshot` | renders a variant in the app's own build, in any theme and width, After, Before or both, cropped to what rendered; `args` may only set closed-type props to allowed values |
+| `screenshot` | renders a variant (or a page, at its route) in the app's own build, in any theme and width, After, Before, both, or Now vs an edit's Proposed; cropped to what rendered, or to one element with `selector`; `maxHeight` and `scale` keep big pages cheap; `args` may only set closed-type props to allowed values |
 | `list_tokens`, `set_token`, `clear_token_overrides` | tokens per theme with purpose and reach; values are previewed as overrides, never written to the repo, and only existing tokens can be set |
 | `get_selection` | what you last picked with Inspect |
 | `list_comments`, `comment` | the workbench's comment threads, as the agent |
@@ -85,6 +85,7 @@ Other clients take the same command (`lathe mcp <repo>`) as a stdio server. Scre
   ui/wrapper.tsx            optional providers / API mocks for isolated renders
   ui/harness-errors.json    render failures, for the agent to fix
   ui/selection.json         the element you last picked in Inspect, for the agent
+  ui/harness.json           optional: proxies for the harness, e.g. { "proxy": { "/__api": "http://127.0.0.1:4000" } }
   ui/edits.json, edits.md   intent edits and the log of accepted ones
   edits/<id>/               an edit's worktree while an agent works on it
   ui/brief.md               the component brief
