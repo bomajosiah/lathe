@@ -65,7 +65,7 @@ switch (cmd) {
       let iaMap = null; try { iaMap = readMap("before"); } catch {}
       const inv = scanParts(root, { ia: iaMap });
       fs.writeFileSync(path.join(ui, "inventory.json"), JSON.stringify(inv, null, 2) + "\n");
-      console.log(`parts: ${inv.parts.length} components`);
+      console.log(`parts: ${inv.parts.length} components${inv.storybook ? ` · ${inv.storybook.stories} Storybook stories as variants` : ""}`);
     }
     if (!fs.existsSync(path.join(ui, "tokens.json"))) {
       const { scanTokens } = await import("../lib/tokens-scan.mjs");
@@ -136,6 +136,7 @@ switch (cmd) {
     fs.writeFileSync(file, JSON.stringify(inv, null, 2) + "\n");
     const dupes = inv.parts.filter((p) => p.dupes.length).length;
     console.log(`parts: ${inv.parts.length} components, ${inv.parts.filter((p) => !p.instances).length} unused, ${dupes} possible duplicates → ${W}ui/inventory.json`);
+    if (inv.storybook) console.log(`storybook: ${inv.storybook.stories} stories in ${inv.storybook.files} files (${inv.storybook.main})${inv.storybook.unlinked.length ? `; not linked to a component: ${inv.storybook.unlinked.join(", ")}` : ""}`);
     console.log(`${W} ${exclude()}`);
     break;
   }

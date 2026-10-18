@@ -40,7 +40,9 @@ The **Parts** tab in the workbench is the same loop for components: inventory, i
 
 1. **Inventory.** `lathe parts <repo>` writes `.lathe/ui/inventory.json`: every component, its props (with TS types), where it's used, which pages it reaches, likely duplicates, and design-debt signals (inline styles, raw colours). Re-scans keep `notes`, `status` (e.g. `keep`, `merge`, `fix`, `remove`), `group`, `tags` and `why`, so annotate in place. Walk the human through duplicates and one-offs before changing anything.
 2. **Before.** `lathe base <repo> [--ref HEAD]` snapshots a git ref into `.lathe/ui/base/`. That's the "Before" side; the working tree is "After". Take it *before* you start editing (the human can also click *Snapshot HEAD*).
-3. **Fixtures.** Most components need props. Write `.lathe/ui/fixtures/<id>.json` (the exact path is shown in the component's Details), one entry per variant:
+3. **Stories first, then fixtures.** If the repo has Storybook, the scan links its stories to components (`stories` on each part in the inventory; `storybook` at the top says how many, and which story files it couldn't link). A component with stories renders them as its variants, so don't write fixtures for it: if a state is missing, the right fix is usually a new story in the repo (that's a code change, on a branch, the human's call). Stories render with their args and decorators; if one needs a provider Storybook gets from somewhere Lathe can't see, put it in `wrapper.tsx` (step 4).
+
+   For components without stories, write fixtures. Most components need props. Write `.lathe/ui/fixtures/<id>.json` (the exact path is shown in the component's Details), one entry per variant:
    ```json
    { "variants": {
        "default": { "score": 72, "grade": "B" },

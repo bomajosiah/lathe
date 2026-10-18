@@ -64,6 +64,7 @@ export function initParts(ctx) {
       if (q && !`${p.name} ${p.file}`.toLowerCase().includes(q)) return false;
       if (P.filter === "shared") return p.instances > 1 || p.pages.length > 1 || p.global;
       if (P.filter === "dupes") return p.dupes.length > 0;
+      if (P.filter === "stories") return !!p.stories?.length;
       if (P.filter === "changed") return P.changed.includes(p.file);
       if (P.filter === "unused") return !p.instances && p.kind !== "page" && p.name !== "App";
       return true;
@@ -76,8 +77,9 @@ export function initParts(ctx) {
       all: parts.length, shared: parts.filter((p) => p.instances > 1 || p.pages.length > 1 || p.global).length,
       dupes: parts.filter((p) => p.dupes.length).length, changed: parts.filter((p) => P.changed.includes(p.file)).length,
       unused: parts.filter((p) => !p.instances && p.kind !== "page" && p.name !== "App").length,
+      stories: parts.filter((p) => p.stories?.length).length,
     };
-    $("#pfilters").innerHTML = [["all", "All"], ["shared", "Shared"], ["dupes", "Dupes"], ["changed", "Edited"], ["unused", "Unused"]]
+    $("#pfilters").innerHTML = [["all", "All"], ["shared", "Shared"], ["stories", "Stories"], ["dupes", "Dupes"], ["changed", "Edited"], ["unused", "Unused"]]
       .filter(([k]) => k === "all" || counts[k])
       .map(([k, l]) => `<button class="chip${P.filter === k ? " is-on" : ""}" data-f="${k}">${l} <span>${counts[k]}</span></button>`).join("");
     const list = visible();
@@ -287,8 +289,14 @@ export function initParts(ctx) {
     L.push(`<div class="label">Source</div><div class="field src" data-src="${esc(`${p.file}:${p.line}`)}">${esc(p.file)}:${p.line}<span class="muted">copy</span></div>`);
     if (p.props.length) L.push(`<div class="label">Props · ${p.props.length}</div><div class="box">${p.props.map((x) => `<div><span class="mono" style="color:var(--ink)">${esc(x.name)}${x.optional ? "?" : ""}</span><span class="mono muted" style="margin-left:auto;text-align:right">${esc(x.type || "")}</span></div>`).join("")}</div>`);
     const vs = P.variants[p.id];
+    if (p.stories?.length) {
+      const files = [...new Set(p.stories.map((x) => x.file))];
+      L.push(`<div class="label">Stories · ${p.stories.length}</div>${files.map((f) => `<div class="field src" data-src="${esc(f)}">${esc(f)}<span class="muted">copy</span></div>`).join("")}`);
+      L.push(`<p class="muted" style="font-size:12px">Variants are this component's Storybook stories, rendered here with their args and decorators. Providers Storybook doesn't supply go in <span class="mono">${esc(dir())}/ui/wrapper.tsx</span>.</p>`);
+    } else {
     L.push(`<div class="label">Fixture</div><div class="field src" data-src="${esc(`${dir()}/ui/fixtures/${safeId(p.id)}.json`)}">${esc(dir())}/ui/fixtures/${esc(safeId(p.id))}.json<span class="muted">copy</span></div>`);
     L.push(`<p class="muted" style="font-size:12px">${vs && !(vs.length === 1 && vs[0] === "default") ? `Variants: ${vs.map(esc).join(", ")}.` : "No fixture yet: it renders with no props."} Ask your agent to write props per variant here; providers and API mocks go in <span class="mono">${esc(dir())}/ui/wrapper.tsx</span>.</p>`);
+    }
     if (p.pages.length) L.push(`<div class="label">Shows on</div><div class="box">${p.pages.map((id) => `<a href="#" data-page="${esc(id)}">${esc(ctx.pageLabel(id))}<span class="muted" style="margin-left:auto">show on map →</span></a>`).join("")}</div>`);
     else if (p.global) L.push(`<div class="label">Shows on</div><div class="field">Every page (rendered from App)</div>`);
     if (p.usedBy.length) L.push(`<div class="label">Used in</div><div class="box">${p.usedBy.map((u) => `<div><span class="mono">${esc(u.file)}</span><span class="muted" style="margin-left:auto">×${u.count}</span></div>`).join("")}</div>`);

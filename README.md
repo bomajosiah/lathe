@@ -42,7 +42,7 @@ Then hand the project to your agent:
 Working day to day:
 
 - **Map:** the agent curates `before.json`, you discuss, it writes `after.json` (or `after-b.json`…), you play the morph, then save the brief.
-- **Parts:** click **Snapshot HEAD** before changing code so Before is today's version; the agent writes fixtures and edits components on a branch; compare with Space / Split / Themes.
+- **Parts:** click **Snapshot HEAD** before changing code so Before is today's version; variants come from the repo's Storybook stories, or fixtures the agent writes where there are none; the agent edits components on a branch; compare with Space / Split / Themes.
 - **Tokens:** edit values live (they're previews until you **Apply**); check reach and contrast; save the brief.
 - **Smells:** `lathe smells <repo>` lists AI-smell candidates (eyebrows, narration, rationale leaks) and the component APIs that cause them; `--baseline` / `--check` make it a ratchet. The scanner comes from the UI skills ([bomajosiah/skills](https://github.com/bomajosiah/skills)); Lathe finds an installed copy and tells you how to install one if there isn't. `lathe skills` lists which companion skills are installed.
 - Comments you leave anywhere land in `.lathe/ia/comments.json` for the agent.
@@ -123,7 +123,8 @@ They connect through source references. Every map section carries a `source` (an
 **How Parts works:**
 
 - **Inventory:** `lathe parts <repo>` scans every React component: props (with TS types), where it's used and how often, the pages it reaches (via the map), likely duplicates, inline styles and raw colours. The agent annotates it in place; re-scans keep the notes.
-- **Isolation without touching the repo:** opening the Parts tab starts the app's own Vite on port 4748 with one injected plugin. Each component renders alone in an iframe with the app's real CSS, fonts, head scripts and router, and hot-reloads as it's edited. Props come from fixtures the agent writes; providers and API mocks go in `.lathe/ui/wrapper.tsx`.
+- **Isolation without touching the repo:** opening the Parts tab starts the app's own Vite on port 4748 with one injected plugin. Each component renders alone in an iframe with the app's real CSS, fonts, head scripts and router, and hot-reloads as it's edited. Variants come from the repo's Storybook stories when it has them, otherwise from fixtures the agent writes; providers and API mocks go in `.lathe/ui/wrapper.tsx`.
+- **Storybook, if the repo has it:** the scan reads `.storybook/main` (its `stories` globs) and links each story file to the component its `meta.component` names (or, without one, to the imported component its title ends with). Those stories become the component's variants, rendered in Lathe's harness, not Storybook's: args, `render`, decorators (story, component, then `.storybook/preview`), parameters and `layout` are applied the way Storybook applies them, and the preview file's CSS imports come along. Storybook doesn't need to be running. Loaders, `play` functions and globals toolbars aren't run. Components without stories keep using fixtures.
 - **Before / after:** `lathe base <repo> --ref HEAD` snapshots a ref into `.lathe/ui/base` (via `git archive`, reusing the installed `node_modules`). Parts renders Before (the ref) and After (the working tree) stacked with a crossfade, or side by side, at mobile/tablet/desktop widths.
 - **Map ↔ Parts:** a section or page on the map links to its component ("Open in Parts"), and a component links back to the pages it shows on.
 
@@ -155,6 +156,7 @@ The third tab exposes the design tokens (colour, type, space, radius, shadow, mo
 - `lib/brief.mjs`: diff → markdown brief
 - `lib/server.mjs`: local server, file watching, comments API
 - `lib/parts-scan.mjs`: repo → component inventory
+- `lib/stories.mjs`: finds Storybook's config and story files and links stories to components
 - `lib/harness.mjs`: finds the Vite app, runs it with the isolation plugin, snapshots the Before ref
 - `lib/parts-brief.mjs`: inventory + changes → component brief
 - `lib/tokens-scan.mjs`, `lib/tokens-core.mjs`, `lib/tokens-brief.mjs`: token inventory, reach and checks; colour/contrast maths; brief
