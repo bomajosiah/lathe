@@ -155,6 +155,15 @@ They connect through source references. Every map section carries a `source` (an
 
 **Limits for now:** Vite + React apps only (Next.js and others need their own harness). Components that aren't exported can only be seen through their parent. The Before side resolves path aliases (like `@/`) to the working tree, so aliased imports inside Before show current code.
 
+## Canvas: screens and components together
+
+The fourth tab puts everything on one surface you pan and zoom. The map's pages are frames at the top (wireframes from the map, or **Render pages** for the real page component where the map names one); below, every component with variants gets a sheet, one cell per story or fixture variant, and **Themes** adds a column per theme. Frames are the app's own build with the token overrides applied, so a change made in Tokens or through `set_token` shows on every component and every screen at once.
+
+- Click a sheet or a frame to select it: a component lights up the screens it appears on, a screen lists its components; **F** zooms to the selection, **0** fits everything, **+ / −** zoom, drag or scroll to pan, pinch or ⌘-scroll to zoom at the pointer.
+- **Smells** outlines the candidates from `lathe smells` on the rendered element they most likely sit in (same file and nearest tagged element, narrowed by the finding's text), with the rule id.
+- **Inspect (I)** picks elements in any frame, as in Parts, and writes `ui/selection.json`.
+- Frames load only near the view (up to 40 at a time) and can't steal the keyboard or scroll the canvas. Pages that need data or a signed-in user render what they render without it: give them providers and mocks in `ui/wrapper.tsx`.
+
 ## Tokens: foundations
 
 The third tab exposes the design tokens (colour, type, space, radius, shadow, motion) so a foundation change is one edit you can see everywhere before it touches the repo.
@@ -165,6 +174,8 @@ The third tab exposes the design tokens (colour, type, space, radius, shadow, mo
 - **Reach:** each token shows what builds on it (`--ink-900` → `--bg-canvas` → …), the components it reaches (open in Parts) and the pages (show on map), plus whether it styles bare elements.
 - **Checks:** contrast of every real colour/background pair in the CSS, per theme, recomputed live as you edit; hard-coded values (with the exact token to use where one matches); duplicate and near-duplicate values; unused tokens.
 - **Brief + apply:** the brief lists each proposed change with where to edit, reach and contrast impact. *Apply to source* writes overrides into the token files in the working tree (after a confirm), leaving generated tokens to the brief for an agent to change at the source.
+
+A token that a scope redefines (say `[data-tenant] { --surface-card: var(--tenant-surface, …) }`) gets Default-theme overrides inside that scope too, so a preview reaches every screen; Apply still edits only the token's own definition.
 
 **Tokens keys:** Space plays before → after, ← / →, ↑ / ↓ next token, 1–7 groups, / search, ⌘| focus mode.
 

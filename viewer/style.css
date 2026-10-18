@@ -209,8 +209,9 @@ body.is-focus .float, body.is-focus .menu, body.is-focus .toast { display: none 
 /* modes */
 body:not(.mode-parts) .parts-only { display: none !important; }
 body:not(.mode-tokens) .tokens-only { display: none !important; }
-body.mode-parts .map-only, body.mode-tokens .map-only { display: none !important; }
-body:not(.mode-parts):not(.mode-tokens) .theme-pick { display: none !important; }
+body:not(.mode-canvas) .canvas-only { display: none !important; }
+body.mode-parts .map-only, body.mode-tokens .map-only, body.mode-canvas .map-only { display: none !important; }
+body:not(.mode-parts):not(.mode-tokens):not(.mode-canvas) .theme-pick { display: none !important; }
 .theme-pick[hidden] { display: none !important; }
 
 /* Parts: list */
@@ -306,3 +307,38 @@ body.is-focus .pstage { z-index: 10; }
 .argpick { margin-left: auto; max-width: 150px; appearance: none; border: 0; border-radius: 6px; background: var(--surface-2); color: var(--ink); font: 11.5px/1.4 ui-monospace, Menlo, monospace; padding: 3px 8px; box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; }
 .argpick option { background: var(--surface); }
 .tswatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; box-shadow: inset 0 0 0 1px var(--line-2); }
+
+/* Canvas */
+.cstage { position: fixed; inset: 0; overflow: hidden; overflow: clip; background: var(--bg); background-image: radial-gradient(var(--line) 1px, transparent 1px); background-size: 24px 24px; cursor: grab; touch-action: none; }
+.cstage.is-panning { cursor: grabbing; }
+.cstage:focus { outline: none; }
+.cworld { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.ctitle { position: absolute; white-space: nowrap; }
+.ctitle b { display: block; font-size: 56px; font-weight: 600; letter-spacing: -0.02em; color: var(--ink); }
+.ctitle span { display: block; font-size: 28px; color: var(--muted); margin-top: 6px; }
+.ctitle.group b { font-size: 32px; font-weight: 500; color: var(--muted); }
+.csheet { position: absolute; border-radius: 24px; background: color-mix(in srgb, var(--surface) 55%, transparent); box-shadow: inset 0 0 0 2px var(--line); }
+.csheet-h { position: absolute; left: 24px; top: -52px; display: flex; gap: 16px; align-items: baseline; white-space: nowrap; }
+.csheet-h b { font-size: 34px; font-weight: 600; color: var(--ink); }
+.csheet-h span { font: 20px var(--mono); color: var(--muted); }
+.ccell { position: absolute; display: flex; flex-direction: column; }
+.ccell-h { height: 40px; display: flex; align-items: center; gap: 12px; font-size: 20px; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.ccell-h b { color: var(--ink); font-weight: 500; }
+.ccell-h em { font-style: normal; font: 16px var(--mono); color: var(--muted); border: 1px solid var(--line-2); border-radius: 6px; padding: 0 6px; }
+.ccell-b { position: relative; border-radius: 14px; overflow: hidden; background: var(--surface); box-shadow: 0 0 0 2px var(--line); }
+.ccell-b iframe { position: absolute; inset: 0; border: 0; background: transparent; }
+.ccell.is-ready .cph { display: none; }
+.ccell.is-live:not(.is-ready) iframe { opacity: 0; }
+.ccell.is-live:not(.is-ready) .cph::after { content: " …"; }
+.cph { position: absolute; inset: 0; display: grid; place-items: center; font-size: 28px; color: var(--muted); }
+.cglass { position: absolute; inset: 0; }
+.cstage.is-inspect .cglass { display: none; }
+.cwire { position: absolute; inset: 0; padding: 20px; display: flex; flex-direction: column; gap: 10px; background: var(--bg); }
+.cwire-s { border-left: 6px solid; border-radius: 8px; background: var(--surface-2); padding: 10px 16px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; min-height: 40px; }
+.cwire-s b { font-size: 22px; font-weight: 500; color: var(--ink); }
+.cwire-s span { font: 16px var(--mono); color: var(--muted); }
+.cworld.has-sel .ccell, .cworld.has-sel .csheet { opacity: 0.35; transition: opacity 0.2s; }
+.cworld.has-sel .is-sel, .cworld.has-sel .is-rel { opacity: 1; }
+.ccell.is-sel .ccell-b, .ccell.is-rel .ccell-b { box-shadow: 0 0 0 calc(3px / var(--k, 1)) var(--accent, #7c9cff); }
+.csheet.is-sel { box-shadow: inset 0 0 0 calc(3px / var(--k, 1)) var(--accent, #7c9cff); }
+.csheet.is-rel { box-shadow: inset 0 0 0 calc(2px / var(--k, 1)) var(--accent, #7c9cff); }

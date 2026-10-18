@@ -2,6 +2,7 @@ import { diffMaps, describe } from "/lib/diff.mjs";
 import { buildBrief } from "/lib/brief.mjs";
 import { initParts } from "/parts.js";
 import { initTokens } from "/tokens.js";
+import { initCanvas } from "/canvas.js";
 
 // ---------- geometry ----------
 const NW = 212, HEAD = 52, SH = 28, SG = 3, PAD = 8, EMPTY_H = 58, LEVEL_GAP = 72, SIB_GAP = 28, GROUP_GAP = 130;
@@ -111,6 +112,7 @@ async function load(keep) {
   draw();
   renderPanel();
   renderLegend();
+  canvas.onTheme(); // the canvas lays out the shown map's pages
 }
 
 // ---------- icons (12×12, drawn at x,y) ----------
@@ -483,7 +485,7 @@ function setFocus(on) {
   hideMenu();
   if (on) document.documentElement.requestFullscreen?.().catch(() => {});
   else if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-  requestAnimationFrame(() => { fit(); parts.layout(); tokens.layout(); });
+  requestAnimationFrame(() => { fit(); parts.layout(); tokens.layout(); canvas.layout(); });
 }
 // Leaving browser fullscreen with Esc also leaves focus mode.
 document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && document.body.classList.contains("is-focus")) setFocus(false); });
@@ -498,7 +500,7 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") document.activeElement.blur();
     return;
   }
-  const mode = document.body.classList.contains("mode-parts") ? parts : document.body.classList.contains("mode-tokens") ? tokens : null;
+  const mode = document.body.classList.contains("mode-parts") ? parts : document.body.classList.contains("mode-tokens") ? tokens : document.body.classList.contains("mode-canvas") ? canvas : null;
   if (mode) {
     if (e.key === "Escape" && document.body.classList.contains("is-focus")) setFocus(false);
     else mode.onKey(e);
@@ -672,7 +674,7 @@ const themeParams = (id = themeId) => {
 function setTheme(id) {
   themeId = id;
   $("#themePick").value = id;
-  parts.onTheme(); tokens.onTheme();
+  parts.onTheme(); tokens.onTheme(); canvas.onTheme();
   toast(`Theme: ${themes.find((t) => t.id === id)?.label || id}`);
 }
 $("#themePick").onchange = (e) => setTheme(e.target.value);
@@ -692,7 +694,7 @@ const tokens = initTokens({
     themes = list;
     $("#themePick").innerHTML = list.map((t) => `<option value="${esc(t.id)}" ${t.id === themeId ? "selected" : ""}>${esc(t.label)}</option>`).join("");
     $("#themeWrap").hidden = list.length < 2;
-    parts.onTheme();
+    parts.onTheme(); canvas.onTheme();
   },
   comments: () => S.comments,
   setComments: (list) => { S.comments = list; draw(); },
@@ -700,13 +702,23 @@ const tokens = initTokens({
   showOnMap: (id) => { setMode("map"); select({ node: id, section: null }, true); focusNode(id); },
   openPart: (id) => { setMode("parts"); parts.select(id); },
 });
+const canvas = initCanvas({
+  setHash, toast, themeParams, cycleTheme, themes: () => themes, themeId: () => themeId,
+  map: () => (hasB() ? S.B : S.A),
+  pageLabel: (id) => S.A?.nodes.find((n) => n.id === id)?.label || allNodes()[id]?.label || id,
+  showOnMap: (id) => { setMode("map"); select({ node: id, section: null }, true); focusNode(id); },
+  openPart: (id) => { setMode("parts"); parts.select(id); },
+  openToken: (name) => { setMode("tokens"); tokens.select(name); },
+});
 function setMode(mode) {
   document.body.classList.toggle("mode-parts", mode === "parts");
   document.body.classList.toggle("mode-tokens", mode === "tokens");
+  document.body.classList.toggle("mode-canvas", mode === "canvas");
   document.querySelectorAll("#modeTabs button").forEach((b) => b.classList.toggle("is-on", b.dataset.mode === mode));
   hideMenu();
   if (mode === "parts") parts.enter();
   else if (mode === "tokens") tokens.enter();
+  else if (mode === "canvas") canvas.enter().catch((e) => toast(e.message));
   else { setHash("map"); draw(); renderPanel(); }
 }
 document.querySelectorAll("#modeTabs button").forEach((b) => (b.onclick = () => setMode(b.dataset.mode)));
@@ -723,10 +735,12 @@ addEventListener("message", (e) => {
 new EventSource("/events").onmessage = (e) => {
   if (e.data !== "ui") load(true).catch((err) => toast(err.message));
   if (parts.loaded) parts.refresh().catch(() => {});
+  if (canvas.loaded) canvas.refresh().catch(() => {});
   if (tokens.loaded) tokens.refresh().catch(() => {});
 };
 load().catch((e) => { $("#empty").hidden = false; $("#empty").textContent = e.message; });
 Promise.all([parts.refresh(), tokens.refresh()]).then(() => {
+  if (location.hash === "#canvas") { setMode("canvas"); return; }
   const m = location.hash.match(/^#(parts|tokens)(?:\/(.+))?$/);
   if (m) { setMode(m[1]); if (m[2]) (m[1] === "parts" ? parts : tokens).select(decodeURIComponent(m[2])); }
   else renderPanel();

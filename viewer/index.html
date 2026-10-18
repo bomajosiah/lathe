@@ -27,6 +27,7 @@
       <button class="is-on" data-mode="map" aria-current="page">Map</button>
       <button data-mode="parts">Parts</button>
       <button data-mode="tokens">Tokens</button>
+      <button data-mode="canvas">Canvas</button>
     </nav>
     <span class="vsep"></span>
     <span class="pbase parts-only" id="pbase"></span>
@@ -99,6 +100,20 @@
     <span class="pzoom" id="pzoom"></span>
     <button id="preload" class="ibtn" title="Reload (R)" aria-label="Reload"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5v3h-3"/></svg></button>
   </div>
+  <!-- Canvas: screens and components on one surface -->
+  <main class="cstage canvas-only" id="cstage" tabindex="-1"><div class="cworld" id="cworld"></div></main>
+  <div class="float dock cdock canvas-only" role="toolbar" aria-label="Canvas controls">
+    <button id="cRender" class="toggle" title="Render pages that map to an exported page component (wireframes otherwise)">Render pages</button>
+    <button id="cThemes" class="toggle" title="Every theme per variant (Shift+T) · T switches theme" hidden>Themes</button>
+    <button id="cSmells" class="toggle" title="Outline AI-smell candidates from lathe smells">Smells</button>
+    <button id="cInspect" class="toggle" title="Pick an element: its source, component and tokens (I)">Inspect</button>
+    <span class="vsep"></span>
+    <span class="pzoom" id="czoom"></span>
+    <button id="cFit" class="ibtn" title="Fit everything (0) · F fits the selection" aria-label="Fit"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M2.5 6V2.5H6M13.5 6V2.5H10M2.5 10v3.5H6M13.5 10v3.5H10"/></svg></button>
+    <button id="cReload" class="ibtn" title="Reload frames (R)" aria-label="Reload"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5v3h-3"/></svg></button>
+  </div>
+  <aside class="float panel canvas-only" id="cpanel"><div class="pbody" id="cpbody"></div></aside>
+
   <!-- Tokens: foundations workbench -->
   <section class="float plist tokens-only" id="tlist">
     <div class="plist-head">
