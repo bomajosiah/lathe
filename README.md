@@ -56,7 +56,7 @@ In the workbench: **Space** plays before → after, **← / →** jump, **T** sw
 | Tool | Does |
 |---|---|
 | `list_components`, `get_component` | the inventory: props with types and the values a closed-type prop allows, stories, usage, pages, duplicates |
-| `screenshot` | renders a variant (or a page, at its route) in the app's own build, in any theme and width, After, Before, both, or Now vs an edit's Proposed; cropped to what rendered, or to one element with `selector`; `maxHeight` and `scale` keep big pages cheap; `args` may only set closed-type props to allowed values |
+| `screenshot` | renders a variant (or a page, at its route from the map or any `route` you give, for tabs that are URLs) in the app's own build, in any theme and width, After, Before, both, or Now vs an edit's Proposed; cropped to what rendered, or to one element with `selector`; `maxHeight` and `scale` keep big pages cheap; `args` may only set closed-type props to allowed values |
 | `list_tokens`, `set_token`, `clear_token_overrides` | tokens per theme with purpose and reach; values are previewed as overrides, never written to the repo, and only existing tokens can be set |
 | `get_selection` | what you last picked with Inspect |
 | `list_comments`, `comment` | the workbench's comment threads, as the agent |
